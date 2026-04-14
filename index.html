@@ -1,78 +1,180 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D Beyin Ağı Karşılaştırması</title>
+    <title>TDA Beyin Ağı Karşılaştırması</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
-        .label { position: absolute; text-align: center; width: 33%; bottom: 20px; color: white; font-weight: bold; }
+        body { margin: 0; overflow: hidden; background: #0a0a1a; font-family: 'Segoe UI', sans-serif; }
+        .label {
+            position: absolute; text-align: center; width: 33.3%; bottom: 30px;
+            color: #ffffff; text-shadow: 0 0 8px rgba(0,255,255,0.6);
+            font-size: 14px; letter-spacing: 0.5px;
+        }
+        .label b { font-size: 18px; display: block; color: #00e0ff; margin-bottom: 5px; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
-    <div class="label" style="left:0">1. SAĞLIKLI</div>
-    <div class="label" style="left:33%">2. ALZHEIMER</div>
-    <div class="label" style="left:66%">3. DOWN SENDROMU</div>
+    <div style="position:relative; width:100%; height:100vh;">
+        <div class="label" style="left: 0;"><b>1. SAĞLIKLI BEYİN</b>(Yüksek Boyutlu Geometri)</div>
+        <div class="label" style="left: 33.3%;"><b>2. ALZHEIMER MODELİ</b>(Rastgele Parçalanma)</div>
+        <div class="label" style="left: 66.6%;"><b>3. D.S. SENDROMU MODELİ</b>(Sınırlı Geometrik Yapılar)</div>
+    </div>
 
     <script>
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 0, 30); // Kamerayı iyice geriye çektik (Garantili görüş)
+        scene.fog = new THREE.FogExp2(0x0a0a1a, 0.012);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 40);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
 
-        // Işık (Olmazsa her yer simsiyah görünür)
-        const light = new THREE.PointLight(0xffffff, 2, 200);
-        light.position.set(10, 10, 20);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040, 2));
+        // --- IŞIKLANDIRMA (Hedef görsele göre daha dramatik) ---
+        const mainLight = new THREE.PointLight(0xffffff, 2.5, 150);
+        mainLight.position.set(0, 15, 20);
+        scene.add(mainLight);
 
-        function createNet(xOffset, color, prob, isDS = false) {
+        const fillLight = new THREE.PointLight(0x00ffff, 1.2, 100);
+        fillLight.position.set(-20, -10, 10);
+        scene.add(fillLight);
+
+        scene.add(new THREE.AmbientLight(0x303030, 0.4));
+
+        // --- GÜNCEL MATERYALLER ---
+        const nodeGeo = new THREE.SphereGeometry(0.2, 24, 24);
+        
+        const matH = new THREE.MeshPhongMaterial({ color: 0xccffcc, emissive: 0x66ff66, emissiveIntensity: 0.6, shininess: 120 });
+        const matA = new THREE.MeshPhongMaterial({ color: 0xffaaaa, emissive: 0xff3333, emissiveIntensity: 0.6, shininess: 120 });
+        const matDS = new THREE.MeshPhongMaterial({ color: 0xffffff, emissive: 0xffaa00, emissiveIntensity: 0.8, shininess: 150 });
+
+        const lineMatBlue = new THREE.LineBasicMaterial({ color: 0x00d4ff, opacity: 0.6, transparent: true, linewidth: 2 });
+        const lineMatOrange = new THREE.LineBasicMaterial({ color: 0xffaa00, opacity: 0.5, transparent: true, linewidth: 2 });
+        const lineMatYellow = new THREE.LineBasicMaterial({ color: 0xffeeaa, opacity: 0.4, transparent: true, linewidth: 2 });
+
+        function createNetGroup(xOffset) {
             const group = new THREE.Group();
-            const nodes = [];
-            const geo = new THREE.SphereGeometry(0.4, 16, 16);
-            const mat = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
-
-            for(let i=0; i<30; i++) {
-                const n = new THREE.Mesh(geo, mat);
-                n.position.set((Math.random()-0.5)*10, (Math.random()-0.5)*10, (Math.random()-0.5)*10);
-                group.add(n);
-                nodes.push(n);
-            }
-
-            const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.3, transparent: true });
-            for(let i=0; i<nodes.length; i++) {
-                for(let j=i+1; j<nodes.length; j++) {
-                    const d = nodes[i].position.distanceTo(nodes[j].position);
-                    let c = Math.random() < prob;
-                    if(isDS && d > 3) c = false; 
-                    if(c) {
-                        const g = new THREE.BufferGeometry().setFromPoints([nodes[i].position, nodes[j].position]);
-                        group.add(new THREE.Line(g, lineMat));
-                    }
-                }
-            }
             group.position.x = xOffset;
             scene.add(group);
             return group;
         }
 
-        const n1 = createNet(-12, 0x00ff00, 0.3); // Yeşil - Sağlıklı
-        const n2 = createNet(0, 0xff0000, 0.05);  // Kırmızı - Alzheimer
-        const n3 = createNet(12, 0xffff00, 0.4, true); // Sarı - Down Sendromu
+        // --- 1. SAĞLIKLI BEYİN (Doğru, daha yoğun yaptık) ---
+        const healthyGroup = createNetGroup(-16);
+        function createHealthy() {
+            const nodes = [];
+            const r = 5.5;
+            for(let i=0; i<35; i++) {
+                const node = new THREE.Mesh(nodeGeo, matH);
+                node.position.set((Math.random()-0.5)*r*2, (Math.random()-0.5)*r*2, (Math.random()-0.5)*r*2);
+                healthyGroup.add(node);
+                nodes.push(node);
+            }
+            // Çok yoğun bağlantılar (TDA Klikleri)
+            for(let i=0; i<nodes.length; i++) {
+                for(let j=i+1; j<nodes.length; j++) {
+                    const dist = nodes[i].position.distanceTo(nodes[j].position);
+                    if(dist < 5 && Math.random() < 0.6) { // Yoğunluk artırıldı
+                        const geo = new THREE.BufferGeometry().setFromPoints([nodes[i].position, nodes[j].position]);
+                        healthyGroup.add(new THREE.Line(geo, lineMatBlue));
+                    }
+                }
+            }
+        }
+        createHealthy();
 
+        // --- 2. ALZHEIMER MODELİ (Gereksiz noktalar kaldırıldı, seyrek bağlantı) ---
+        const alzGroup = createNetGroup(0);
+        function createAlzheimer() {
+            const nodes = [];
+            const r = 5.5;
+            // Nöron sayısını azalttık ve bağlantısı olmayanları oluşturmuyoruz
+            for(let i=0; i<18; i++) { // Sayı azaltıldı
+                const node = new THREE.Mesh(nodeGeo, matA);
+                node.position.set((Math.random()-0.5)*r*2, (Math.random()-0.5)*r*2, (Math.random()-0.5)*r*2);
+                alzGroup.add(node);
+                nodes.push(node);
+            }
+            // Seyrek ve kopuk bağlantılar
+            for(let i=0; i<nodes.length; i++) {
+                for(let j=i+1; j<nodes.length; j++) {
+                    const dist = nodes[i].position.distanceTo(nodes[j].position);
+                    if(dist < 6 && Math.random() < 0.06) { // Çok düşük olasılık
+                        const geo = new THREE.BufferGeometry().setFromPoints([nodes[i].position, nodes[j].position]);
+                        alzGroup.add(new THREE.Line(geo, lineMatOrange));
+                    }
+                }
+            }
+        }
+        createAlzheimer();
+
+        // --- 3. DOWN SENDROMU MODELİ (Tam 4 daire/klik yapısı, zincir şeklinde) ---
+        const dsGroup = createNetGroup(16);
+        function createDS_Chain() {
+            const positions = [
+                new THREE.Vector3(-3.5, -2, 0),
+                new THREE.Vector3(3.5, -2, 0),
+                new THREE.Vector3(-3.5, 4, 0),
+                new THREE.Vector3(3.5, 4, 0)
+            ];
+            const cliqueRadius = 3;
+            const nodesPerClique = 10;
+            const chainNodes = [];
+
+            // 4 ayrı geometrik yapıyı (klik) oluştur
+            for (let c = 0; c < 4; c++) {
+                const cliqueNodes = [];
+                for (let i = 0; i < nodesPerClique; i++) {
+                    const node = new THREE.Mesh(nodeGeo, matDS);
+                    const angle = (i / nodesPerClique) * Math.PI * 2;
+                    // Tam bir "daire/klik" yapısı
+                    node.position.set(
+                        positions[c].x + Math.cos(angle) * cliqueRadius * (1 + (Math.random()-0.5)*0.2), 
+                        positions[c].y + Math.sin(angle) * cliqueRadius * (1 + (Math.random()-0.5)*0.2), 
+                        (Math.random()-0.5)*1.5
+                    );
+                    dsGroup.add(node);
+                    cliqueNodes.push(node);
+                    chainNodes.push(node);
+                }
+                // Klik içindeki tüm düğümleri bağla (Tam Klik)
+                for(let i=0; i<cliqueNodes.length; i++) {
+                    for(let j=i+1; j<cliqueNodes.length; j++) {
+                        const geo = new THREE.BufferGeometry().setFromPoints([cliqueNodes[i].position, cliqueNodes[j].position]);
+                        dsGroup.add(new THREE.Line(geo, lineMatYellow));
+                    }
+                }
+            }
+            // Klikleri birbirine sınırlı şekilde bağla (Zincir etkisi)
+            for (let c = 0; c < 3; c++) {
+                const nodeA = chainNodes[c * nodesPerClique];
+                const nodeB = chainNodes[(c + 1) * nodesPerClique];
+                const geo = new THREE.BufferGeometry().setFromPoints([nodeA.position, nodeB.position]);
+                dsGroup.add(new THREE.Line(geo, lineMatYellow));
+            }
+        }
+        createDS_Chain();
+
+        // --- ANİMASYON ---
         function animate() {
             requestAnimationFrame(animate);
-            n1.rotation.y += 0.005;
-            n2.rotation.y += 0.005;
-            n3.rotation.y += 0.005;
+            healthyGroup.rotation.y += 0.003;
+            alzGroup.rotation.y += 0.001;
+            dsGroup.rotation.y += 0.0015;
+            controls.update();
             renderer.render(scene, camera);
-        }
-        animate();
+        } animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
