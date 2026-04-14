@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Beyin Ağı Görselleştirme</title>
+    <style> body { margin: 0; overflow: hidden; background: #000; } </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <script>
+        // 1. SAHNE AYARLARI
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 2. IŞIKLANDIRMA
+        const light = new THREE.PointLight(0xffffff, 1, 100);
+        light.position.set(10, 10, 10);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
+
+        // 3. AĞI OLUŞTURMA (SAĞLIKLI BEYİN ÖRNEĞİ)
+        const dugumSayisi = 20;
+        const dugumler = [];
+        const dugumGeometrisi = new THREE.SphereGeometry(0.2, 32, 32);
+        const dugumMateryali = new THREE.MeshPhongMaterial({ color: 0x00ff00 }); // Yeşil Nöronlar
+
+        // Rastgele konumlara nöronları (küreleri) yerleştir
+        for (let i = 0; i < dugumSayisi; i++) {
+            const dugum = new THREE.Mesh(dugumGeometrisi, dugumMateryali);
+            dugum.position.set(
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10
+            );
+            scene.add(dugum);}
