@@ -3,7 +3,7 @@
 <head>
     <title>TDA Beyin Ağı Karşılaştırması</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #050510; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; overflow: hidden; background: radial-gradient(circle, #0a0a1a 0%, #000 100%); font-family: 'Segoe UI', sans-serif; }
         .label {
             position: absolute; text-align: center; width: 33.3%; bottom: 40px;
             color: #ffffff; text-shadow: 0 0 10px rgba(0,255,255,0.7);
@@ -24,112 +24,114 @@
     <script>
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 0, 45); // Tüm yapıları görmek için ideal uzaklık
+        camera.position.set(0, 5, 50); // Görseldeki gibi geniş açı
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
 
-        // Işıklandırma
-        const light = new THREE.PointLight(0xffffff, 2, 200);
-        light.position.set(0, 10, 30);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040, 1.5));
+        // --- IŞIKLANDIRMA (Görseldeki parlamalar için) ---
+        const mainLight = new THREE.PointLight(0xffffff, 2.5, 200);
+        mainLight.position.set(0, 20, 30);
+        scene.add(mainLight);
+        scene.add(new THREE.AmbientLight(0x404040, 1.2));
 
-        const nodeGeo = new THREE.SphereGeometry(0.25, 24, 24);
-        const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.4, transparent: true });
+        const nodeGeo = new THREE.SphereGeometry(0.3, 24, 24);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.35, transparent: true });
 
-        // --- 1. SAĞLIKLI (YEŞİL) ---
+        // --- 1. SAĞLIKLI BEYİN (YÜKSEK YOĞUNLUK) ---
         function createHealthy(offset) {
             const group = new THREE.Group();
             const nodes = [];
-            const mat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, emissive: 0x00ffaa, emissiveIntensity: 0.5 });
-            for(let i=0; i<35; i++) {
+            const mat = new THREE.MeshPhongMaterial({ color: 0x00ffaa, emissive: 0x00ffaa, emissiveIntensity: 0.7 });
+            
+            for(let i=0; i<60; i++) { // Nokta sayısı artırıldı
                 const n = new THREE.Mesh(nodeGeo, mat);
-                n.position.set((Math.random()-0.5)*12, (Math.random()-0.5)*12, (Math.random()-0.5)*12);
+                n.position.set((Math.random()-0.5)*15, (Math.random()-0.5)*15, (Math.random()-0.5)*15);
                 group.add(n); nodes.push(n);
             }
-            for(let i=0; i<nodes.length; i++) {
-                for(let j=i+1; j<nodes.length; j++) {
-                    if(nodes[i].position.distanceTo(nodes[j].position) < 6 && Math.random() < 0.4) {
-                        const g = new THREE.BufferGeometry().setFromPoints([nodes[i].position, nodes[j].position]);
+            nodes.forEach((n1, i) => {
+                nodes.slice(i+1).forEach(n2 => {
+                    if(n1.position.distanceTo(n2.position) < 7) { // Daha fazla bağlantı
+                        const g = new THREE.BufferGeometry().setFromPoints([n1.position, n2.position]);
                         group.add(new THREE.Line(g, lineMat));
                     }
-                }
-            }
+                });
+            });
             group.position.x = offset; scene.add(group); return group;
         }
 
-        // --- 2. ALZHEIMER (KIRMIZI - Bağlantısız nokta yok) ---
+        // --- 2. ALZHEIMER (GÖRSELDEKİ C-FORMU VE PARÇALANMIŞ YAPI) ---
         function createAlzheimer(offset) {
             const group = new THREE.Group();
-            const mat = new THREE.MeshPhongMaterial({ color: 0xff4444, emissive: 0xff0000, emissiveIntensity: 0.5 });
+            const mat = new THREE.MeshPhongMaterial({ color: 0xff4444, emissive: 0xff0000, emissiveIntensity: 0.7 });
             const nodes = [];
-            for(let i=0; i<15; i++) {
+            
+            for(let i=0; i<25; i++) {
+                const angle = (i / 25) * Math.PI * 1.5; // C-şekli oluşturur
                 const n = new THREE.Mesh(nodeGeo, mat);
-                n.position.set((Math.random()-0.5)*12, (Math.random()-0.5)*12, (Math.random()-0.5)*12);
+                n.position.set(
+                    Math.cos(angle) * 6 + (Math.random()-0.5)*2,
+                    Math.sin(angle) * 6 + (Math.random()-0.5)*2,
+                    (Math.random()-0.5)*4
+                );
                 nodes.push(n);
             }
-            // Sadece bağlantısı olanları sahneye ekle
             nodes.forEach((n, i) => {
                 let connected = false;
                 for(let j=0; j<nodes.length; j++) {
-                    if(i !== j && Math.random() < 0.08) {
+                    if(i !== j && nodes[i].position.distanceTo(nodes[j].position) < 5 && Math.random() < 0.2) {
                         const g = new THREE.BufferGeometry().setFromPoints([n.position, nodes[j].position]);
                         group.add(new THREE.Line(g, lineMat));
                         connected = true;
                     }
                 }
-                if(connected) group.add(n); // Sadece bir yere bağlanan kırmızıları ekle
+                if(connected) group.add(n); // Sadece bağlantısı olanları ekle (Image 14'teki gibi)
             });
             group.position.x = offset; scene.add(group); return group;
         }
 
-        // --- 3. DOWN SENDROMU (SARI - 4 Daire Bölüm) ---
+        // --- 3. DOWN SENDROMU (4 AYRI DAİRESEL KLİK) ---
         function createDS(offset) {
             const group = new THREE.Group();
-            const mat = new THREE.MeshPhongMaterial({ color: 0xffdd00, emissive: 0xffaa00, emissiveIntensity: 0.6 });
-            const centers = [
-                {x: -3, y: 3}, {x: 3, y: 3},
-                {x: -3, y: -3}, {x: 3, y: -3}
-            ];
+            const mat = new THREE.MeshPhongMaterial({ color: 0xffdd00, emissive: 0xffaa00, emissiveIntensity: 0.8 });
+            const centers = [{x:-4, y:4}, {x:4, y:4}, {x:-4, y:-4}, {x:4, y:-4}];
 
             centers.forEach(center => {
                 const cliqueNodes = [];
-                for(let i=0; i<8; i++) {
+                for(let i=0; i<10; i++) {
                     const n = new THREE.Mesh(nodeGeo, mat);
-                    const angle = (i / 8) * Math.PI * 2;
+                    const angle = (i / 10) * Math.PI * 2;
                     n.position.set(
-                        center.x + Math.cos(angle) * 2.5,
-                        center.y + Math.sin(angle) * 2.5,
-                        (Math.random()-0.5) * 2
+                        center.x + Math.cos(angle) * 3,
+                        center.y + Math.sin(angle) * 3,
+                        (Math.random()-0.5)*2
                     );
-                    group.add(n);
-                    cliqueNodes.push(n);
+                    group.add(n); cliqueNodes.push(n);
                 }
-                // Daire içindeki her noktayı birbirine bağla (Klik yapısı)
-                for(let i=0; i<cliqueNodes.length; i++) {
-                    for(let j=i+1; j<cliqueNodes.length; j++) {
-                        const g = new THREE.BufferGeometry().setFromPoints([cliqueNodes[i].position, cliqueNodes[j].position]);
+                cliqueNodes.forEach((n1, i) => {
+                    cliqueNodes.slice(i+1).forEach(n2 => {
+                        const g = new THREE.BufferGeometry().setFromPoints([n1.position, n2.position]);
                         group.add(new THREE.Line(g, lineMat));
-                    }
-                }
+                    });
+                });
             });
             group.position.x = offset; scene.add(group); return group;
         }
 
-        const g1 = createHealthy(-16);
-        const g2 = createAlzheimer(0);
-        const g3 = createDS(16);
+        const h = createHealthy(-20);
+        const a = createAlzheimer(0);
+        const ds = createDS(20);
 
         function animate() {
             requestAnimationFrame(animate);
-            g1.rotation.y += 0.003;
-            g2.rotation.y += 0.001;
-            g3.rotation.y += 0.002;
+            h.rotation.y += 0.002;
+            a.rotation.y += 0.001;
+            ds.rotation.y += 0.0015;
             controls.update();
             renderer.render(scene, camera);
         }
